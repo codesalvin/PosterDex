@@ -1,11 +1,19 @@
-const $=selector=>document.querySelector(selector), key='posterdex-v1', grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), preview=$('#urlPreview'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter');
+const $=selector=>document.querySelector(selector), key='posterdex-v1', grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter');
 const safe=s=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const urls=()=>urlInput.value.split(/\r?\n/).map(url=>url.trim()).filter(Boolean);
 const validUrl=url=>{ try{return new URL(url).protocol==='https:';}catch{return false;} };
+const validSource=source=>validUrl(source)||/^data:image\/(?:jpeg|png|webp);base64,/i.test(source);
 let restored=[];try{const parsed=JSON.parse(localStorage.getItem(key)||'[]');if(Array.isArray(parsed))restored=parsed;}catch{}
-let cards=restored.map(card=>({...card,url:String(card?.url||'').replace(/^http:/,'https:')})).filter(card=>validUrl(card.url)&&typeof card.title==='string').map(card=>({id:typeof card.id==='string'&&/^[\w-]+$/.test(card.id)?card.id:crypto.randomUUID(),url:card.url,title:card.title.slice(0,60),year:/^\d{4}$/.test(String(card.year||''))?String(card.year):'',rarity:['Common','Rare','Legendary'].includes(card.rarity)?card.rarity:'Common'})), editingId=null, draggedId=null;
+let cards=restored.map(card=>({...card,url:String(card?.url||'').replace(/^http:/,'https:')})).filter(card=>validSource(card.url)&&typeof card.title==='string').map(card=>({id:typeof card.id==='string'&&/^[\w-]+$/.test(card.id)?card.id:crypto.randomUUID(),url:card.url,title:card.title.slice(0,60),year:/^\d{4}$/.test(String(card.year||''))?String(card.year):'',rarity:['Common','Rare','Legendary'].includes(card.rarity)?card.rarity:'Common'})), editingId=null, draggedId=null, previewUrls=[];
 localStorage.removeItem('posterdex-tmdb-token');
-const save=()=>{ localStorage.setItem(key,JSON.stringify(cards)); refreshYears(); render(); };
+const save=()=>{ try{localStorage.setItem(key,JSON.stringify(cards));}catch{alert('Browser storage is full. Export your collection, then remove a few uploaded posters.');try{cards=JSON.parse(localStorage.getItem(key)||'[]');}catch{cards=[];}refreshYears();render();return false;}refreshYears();render();return true; };
+
+const compressImage=file=>new Promise((resolve,reject)=>{
+  const objectUrl=URL.createObjectURL(file), image=new Image();
+  image.onload=()=>{const scale=Math.min(1,600/image.width,900/image.height),canvas=document.createElement('canvas');canvas.width=Math.round(image.width*scale);canvas.height=Math.round(image.height*scale);const context=canvas.getContext('2d');context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);URL.revokeObjectURL(objectUrl);resolve(canvas.toDataURL('image/webp',.8));};
+  image.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error(`Could not read ${file.name}.`));};image.src=objectUrl;
+});
+const clearPreviewUrls=()=>{previewUrls.forEach(URL.revokeObjectURL);previewUrls=[];};
 
 function refreshYears(){
   const selected=yearFilter.value, years=[...new Set(cards.map(card=>card.year).filter(Boolean))].sort((a,b)=>b-a);
@@ -17,26 +25,32 @@ function render(){
   count.textContent=`${cards.length} CARD${cards.length===1?'':'S'}`;
   grid.innerHTML=shown.length?shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}" draggable="true"><button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title)}">×</button><button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title)}">✎</button><div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title)} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.indexOf(card)+1).padStart(3,'0')}</span></div></div></article>`).join(''):`<div class="empty"><div><strong>${cards.length?'No matching cards.':'Your binder is empty.'}</strong><span>${cards.length?'Try another filter.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
 }
-function showPreview(){ preview.innerHTML=urls().filter(validUrl).map(url=>`<img src="${safe(url)}" alt="Poster preview">`).join(''); }
+function showPreview(){ clearPreviewUrls();previewUrls=[...gallery.files].map(URL.createObjectURL);preview.innerHTML=[...urls().filter(validUrl),...previewUrls].map(url=>`<img src="${safe(url)}" alt="Poster preview">`).join(''); }
 function openEditor(card){
-  editingId=card?.id||null; form.reset(); error.textContent=''; preview.innerHTML='';
+  editingId=card?.id||null; form.reset(); error.textContent=''; clearPreviewUrls(); preview.innerHTML='';
   $('#dialogTitle').textContent=card?'Edit card':'New pull'; $('#savePoster').textContent=card?'Save changes':'Add to collection';
-  if(card){ urlInput.value=card.url; $('#title').value=card.title; $('#year').value=card.year; $('#rarity').value=card.rarity; showPreview(); }
+  if(card){ if(validUrl(card.url))urlInput.value=card.url;else preview.innerHTML=`<img src="${safe(card.url)}" alt="Poster preview">`; $('#title').value=card.title; $('#year').value=card.year; $('#rarity').value=card.rarity; if(validUrl(card.url))showPreview(); }
   dialog.showModal(); urlInput.focus();
 }
 
 $('#openAdd').onclick=()=>openEditor();
 $('#cancel').onclick=()=>dialog.close();
 urlInput.oninput=showPreview;
-form.onsubmit=e=>{
-  e.preventDefault(); const data=new FormData(form), year=data.get('year').trim(), links=urls();
+gallery.onchange=showPreview;
+form.onsubmit=async e=>{
+  e.preventDefault(); const data=new FormData(form), year=data.get('year').trim(), links=urls(), files=[...gallery.files];
   if(year&&!/^\d{4}$/.test(year)){error.textContent='Year must be four digits.';return;}
-  if(!links.length||links.some(url=>!validUrl(url))){error.textContent='Every line must be a valid HTTPS image URL.';return;}
-  if(new Set(links).size!==links.length||links.some(url=>cards.some(card=>card.url===url&&card.id!==editingId))){error.textContent='One of those posters is already in your collection.';return;}
+  if(links.some(url=>!validUrl(url))){error.textContent='Every pasted line must be a valid HTTPS image URL.';return;}
+  if(files.length>10||files.some(file=>!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>15*1024*1024)){error.textContent='Choose up to 10 JPEG, PNG, or WebP files under 15 MB each.';return;}
+  error.textContent=files.length?'Preparing images…':'';
+  let sources;try{sources=[...links,...await Promise.all(files.map(compressImage))];}catch(err){error.textContent=err.message;return;}
+  if(editingId&&!sources.length)sources=[cards.find(card=>card.id===editingId).url];
+  if(!sources.length){error.textContent='Paste a poster URL or choose an image from your gallery.';return;}
+  if(new Set(sources).size!==sources.length||sources.some(source=>cards.some(card=>card.url===source&&card.id!==editingId))){error.textContent='One of those posters is already in your collection.';return;}
   const details={title:data.get('title').trim(),year,rarity:data.get('rarity')};
-  if(editingId){ const index=cards.findIndex(card=>card.id===editingId); Object.assign(cards[index],{url:links[0],...details}); cards.splice(index+1,0,...links.slice(1).map(url=>({id:crypto.randomUUID(),url,...details}))); }
-  else cards.unshift(...links.map(url=>({id:crypto.randomUUID(),url,...details})));
-  dialog.close(); save();
+  if(editingId){ const index=cards.findIndex(card=>card.id===editingId); Object.assign(cards[index],{url:sources[0],...details}); cards.splice(index+1,0,...sources.slice(1).map(url=>({id:crypto.randomUUID(),url,...details}))); }
+  else cards.unshift(...sources.map(url=>({id:crypto.randomUUID(),url,...details})));
+  if(save()){clearPreviewUrls();dialog.close();}
 };
 grid.onclick=e=>{
   const removeId=e.target.dataset.remove, editId=e.target.dataset.edit;
@@ -51,5 +65,5 @@ grid.ondragend=()=>{draggedId=null;render();};
 search.oninput=yearFilter.onchange=rarityFilter.onchange=render;
 $('#exportCards').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,cards},null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`posterdex-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);};
 $('#importCards').onclick=()=>$('#importFile').click();
-$('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards;if(!Array.isArray(incoming)||incoming.some(card=>!validUrl(card.url)||typeof card.title!=='string'))throw new Error();const known=new Set(cards.map(card=>card.url));cards.push(...incoming.filter(card=>!known.has(card.url)&&known.add(card.url)).map(card=>({id:crypto.randomUUID(),url:card.url,title:card.title,year:String(card.year||''),rarity:['Common','Rare','Legendary'].includes(card.rarity)?card.rarity:'Common'})));save();}catch{alert('That is not a valid PosterDex backup.');}e.target.value='';};
+$('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards;if(!Array.isArray(incoming)||incoming.some(card=>!validSource(card.url)||typeof card.title!=='string'))throw new Error();const known=new Set(cards.map(card=>card.url));cards.push(...incoming.filter(card=>!known.has(card.url)&&known.add(card.url)).map(card=>({id:crypto.randomUUID(),url:card.url,title:card.title,year:String(card.year||''),rarity:['Common','Rare','Legendary'].includes(card.rarity)?card.rarity:'Common'})));save();}catch{alert('That is not a valid PosterDex backup.');}e.target.value='';};
 refreshYears(); render();

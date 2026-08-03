@@ -29,8 +29,11 @@
     <form id="form">
       <h2 id="dialogTitle">New pull</h2>
       <label for="url">Poster image URL(s)</label>
-      <textarea id="url" name="url" placeholder="Paste one image URL per line" required></textarea>
+      <textarea id="url" name="url" placeholder="Paste one image URL per line"></textarea>
       <div class="hint">Add one or several HTTPS poster variants, one URL per line. Need a poster? <a href="https://www.themoviedb.org/movie" target="_blank" rel="noreferrer">Browse movies on TMDB</a>, open a poster, then copy its image address—not the movie page URL.</div>
+      <label for="gallery">Or choose from your gallery</label>
+      <input id="gallery" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+      <div class="hint">JPEG, PNG, or WebP. Up to 10 images at once; files stay on this device.</div>
       <div class="url-preview" id="urlPreview"></div>
       <label for="title">Movie title</label>
       <input id="title" name="title" placeholder="Enter the title" maxlength="60" required>

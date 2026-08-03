@@ -52,6 +52,7 @@ form h2 { margin:0 0 22px; font:800 1.6rem "Unbounded",sans-serif; }
 label { display:block; margin:14px 0 6px; font-size:.72rem; text-transform:uppercase; }
 form input,form select,form textarea { width:100%; padding:12px; border:var(--line); background:white; outline:none; }
 form textarea { min-height:105px; resize:vertical; }
+form input[type="file"] { background:#fffaf0; cursor:pointer; }
 .hint { margin-top:6px; font-size:.65rem; line-height:1.45; opacity:.65; }
 .url-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(65px,1fr)); gap:8px; margin-top:10px; }
 .url-preview:empty { display:none; }

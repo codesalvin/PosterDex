@@ -1,6 +1,6 @@
 # PosterDex
 
-A dependency-free movie-poster collection that deploys as a static site. Collections, filters, ordering, and backups run entirely in the browser.
+A dependency-free movie-poster collection that deploys as a static site. Collections, gallery images, filters, ordering, and backups run entirely in the browser.
 
 ## Deploy to Vercel
 
@@ -39,7 +39,7 @@ External poster hosts still receive each image request and may log the visitor's
 
 ## Data and backups
 
-Browser storage is device/profile-specific and can be cleared by the user or browser. The built-in Export and Import buttons are the backup path. No collection data reaches Vercel.
+Browser storage is device/profile-specific and can be cleared by the user or browser. Gallery images are resized and compressed locally before storage, and are included in JSON backups. The built-in Export and Import buttons are the backup path. No collection data reaches Vercel.
 
 ## Project files
 
