@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Collect, organize, and back up your favorite movie posters.">
+  <meta name="theme-color" content="#f2eddf">
+  <title>PosterDex — Movie Poster Collection</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
+    <button class="add" id="openAdd">＋ Add a poster</button>
+  </header>
+  <div class="toolbar">
+    <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
+    <select class="filter" id="yearFilter" aria-label="Filter by year"><option value="">All years</option></select>
+    <select class="filter" id="rarityFilter" aria-label="Filter by rarity"><option value="">All rarities</option><option>Common</option><option>Rare</option><option>Legendary</option></select>
+    <button class="tool-button" id="exportCards">Export</button>
+    <button class="tool-button" id="importCards">Import</button>
+    <input id="importFile" type="file" accept="application/json" hidden>
+    <div class="count" id="count">0 CARDS</div>
+  </div>
+  <main><section class="grid" id="grid" aria-live="polite"></section></main>
+  <footer><span>YOUR COLLECTION · STORED ON THIS DEVICE</span><span>EST. 2026</span></footer>
+
+  <dialog id="dialog">
+    <form id="form">
+      <h2 id="dialogTitle">New pull</h2>
+      <label for="url">Poster image URL(s)</label>
+      <textarea id="url" name="url" placeholder="Paste one image URL per line" required></textarea>
+      <div class="hint">Add one or several HTTPS poster variants, one URL per line. Need a poster? <a href="https://www.themoviedb.org/movie" target="_blank" rel="noreferrer">Browse movies on TMDB</a>, open a poster, then copy its image address—not the movie page URL.</div>
+      <div class="url-preview" id="urlPreview"></div>
+      <label for="title">Movie title</label>
+      <input id="title" name="title" placeholder="Enter the title" maxlength="60" required>
+      <div class="form-row">
+        <div><label for="year">Year</label><input id="year" name="year" inputmode="numeric" placeholder="2026" maxlength="4"></div>
+        <div><label for="rarity">Rarity</label><select id="rarity" name="rarity"><option>Common</option><option>Rare</option><option>Legendary</option></select></div>
+      </div>
+      <div class="error" id="error"></div>
+      <div class="actions"><button type="button" id="cancel">Cancel</button><button class="save" id="savePoster" type="submit">Add to collection</button></div>
+    </form>
+  </dialog>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
