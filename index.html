@@ -11,7 +11,7 @@
 <body>
   <header>
     <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
-    <button class="add" id="openAdd">＋ Add a poster</button>
+    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="add" id="openAdd">＋ Add a poster</button></div>
   </header>
   <div class="toolbar">
     <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
@@ -46,6 +46,19 @@
     </form>
   </dialog>
 
-  <script src="app.js" defer></script>
+  <dialog id="authDialog">
+    <form id="authForm">
+      <h2>Welcome to PosterDex</h2>
+      <div class="hint">Log in or create an account with email and password.</div>
+      <label for="authEmail">Email</label>
+      <input id="authEmail" type="email" autocomplete="email" required>
+      <label for="authPassword">Password</label>
+      <input id="authPassword" type="password" autocomplete="current-password" minlength="8" required>
+      <div class="error" id="authMessage" role="status"></div>
+      <div class="actions"><button type="button" id="closeAuth">Cancel</button><button type="button" id="signupButton">Sign up</button><button class="save" type="submit">Log in</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
 </body>
 </html>

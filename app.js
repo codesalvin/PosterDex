@@ -1,4 +1,9 @@
-const $=selector=>document.querySelector(selector), key='posterdex-v1', grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter');
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.0/+esm';
+import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
+
+const $=selector=>document.querySelector(selector), key='posterdex-v1', grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage');
+const backendConfigured=!SUPABASE_URL.includes('YOUR_PROJECT')&&!SUPABASE_PUBLISHABLE_KEY.includes('REPLACE_ME');
+const supabase=backendConfigured?createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
 const safe=s=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const urls=()=>urlInput.value.split(/\r?\n/).map(url=>url.trim()).filter(Boolean);
 const validUrl=url=>{ try{return new URL(url).protocol==='https:';}catch{return false;} };
@@ -14,6 +19,18 @@ const compressImage=file=>new Promise((resolve,reject)=>{
   image.onerror=()=>{URL.revokeObjectURL(objectUrl);reject(new Error(`Could not read ${file.name}.`));};image.src=objectUrl;
 });
 const clearPreviewUrls=()=>{previewUrls.forEach(URL.revokeObjectURL);previewUrls=[];};
+
+function showSession(session){
+  const email=session?.user?.email||'';
+  $('#userLabel').textContent=email;
+  $('#authButton').hidden=Boolean(session);
+  $('#logoutButton').hidden=!session;
+}
+async function initializeAuth(){
+  if(!supabase)return showSession(null);
+  const {data}=await supabase.auth.getSession();showSession(data.session);
+  supabase.auth.onAuthStateChange((_event,session)=>showSession(session));
+}
 
 function refreshYears(){
   const selected=yearFilter.value, years=[...new Set(cards.map(card=>card.year).filter(Boolean))].sort((a,b)=>b-a);
@@ -34,6 +51,11 @@ function openEditor(card){
 }
 
 $('#openAdd').onclick=()=>openEditor();
+$('#authButton').onclick=()=>{authForm.reset();authMessage.textContent=backendConfigured?'':'Add your Supabase project URL and publishable key in config.js first.';authDialog.showModal();};
+$('#closeAuth').onclick=()=>authDialog.close();
+authForm.onsubmit=async e=>{e.preventDefault();if(!supabase)return;authMessage.textContent='Logging in…';const {error}=await supabase.auth.signInWithPassword({email:$('#authEmail').value.trim(),password:$('#authPassword').value});if(error){authMessage.textContent=error.message;return;}authDialog.close();};
+$('#signupButton').onclick=async()=>{if(!authForm.reportValidity()||!supabase)return;authMessage.textContent='Creating account…';const {data,error}=await supabase.auth.signUp({email:$('#authEmail').value.trim(),password:$('#authPassword').value,options:{emailRedirectTo:`${location.origin}/`}});authMessage.textContent=error?error.message:data.session?'Account created.':'Check your email to confirm your account.';if(data.session)authDialog.close();};
+$('#logoutButton').onclick=async()=>{if(supabase)await supabase.auth.signOut();};
 $('#cancel').onclick=()=>dialog.close();
 urlInput.oninput=showPreview;
 gallery.onchange=showPreview;
@@ -66,4 +88,4 @@ search.oninput=yearFilter.onchange=rarityFilter.onchange=render;
 $('#exportCards').onclick=()=>{const blob=new Blob([JSON.stringify({version:1,cards},null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`posterdex-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);};
 $('#importCards').onclick=()=>$('#importFile').click();
 $('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards;if(!Array.isArray(incoming)||incoming.some(card=>!validSource(card.url)||typeof card.title!=='string'))throw new Error();const known=new Set(cards.map(card=>card.url));cards.push(...incoming.filter(card=>!known.has(card.url)&&known.add(card.url)).map(card=>({id:crypto.randomUUID(),url:card.url,title:card.title,year:String(card.year||''),rarity:['Common','Rare','Legendary'].includes(card.rarity)?card.rarity:'Common'})));save();}catch{alert('That is not a valid PosterDex backup.');}e.target.value='';};
-refreshYears(); render();
+refreshYears(); render(); await initializeAuth();
