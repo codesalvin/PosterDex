@@ -26,7 +26,7 @@ The publishable key is intended for browser use. Never commit a secret key, lega
 
 Use Supabase PostgreSQL. Supabase Auth owns user identities, the `posters` table stores collection metadata, and the private `poster-images` bucket stores gallery files. Row-level security limits every record and storage path to its owner.
 
-The current UI authenticates users, while collections still work local-first in `localStorage`. The included schema is ready for cloud collection sync without storing image binaries in database rows.
+Only authenticated users can retain a collection. Poster metadata is stored in `public.posters`; gallery images are stored in the private `poster-images` bucket. Anonymous visitors cannot read or write collection rows under RLS.
 
 ## Security model
 
@@ -41,13 +41,15 @@ External poster hosts still receive each image request and may log the visitor's
 
 ## Data and backups
 
-Browser storage is still device/profile-specific until cloud collection sync is enabled. Gallery images are resized and compressed locally and included in JSON backups. The built-in Export and Import buttons remain the backup path.
+Collections load from Supabase after login and are not persisted in browser storage. Gallery images are resized and compressed before private upload and are included in JSON backups. Supabase may retain the login session token locally so users remain signed in.
+
+If an older browser-local collection exists and the signed-in account has no cloud posters yet, PosterDex migrates that collection once and then removes the legacy browser copy.
 
 ## Project files
 
 - `index.html` contains the page structure.
 - `styles.css` contains presentation and responsive styles.
-- `app.js` contains collection behavior and browser storage.
+- `app.js` contains authentication, cloud collection behavior, and private image uploads.
 - `config.js` contains the public Supabase project configuration.
 - `supabase/schema.sql` contains the database, storage, and RLS setup.
 - `vercel.json` contains deployment and security configuration.
