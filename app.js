@@ -38,6 +38,8 @@ function showSession(nextSession){
   $('#userLabel').textContent=session?.user?.email||'';
   $('#authButton').hidden=Boolean(session);
   $('#logoutButton').hidden=!session;
+  $('#openAdd').hidden=!session;
+  $('#collectionToolbar').hidden=!session;
   $('#importCards').disabled=!session;
   $('#exportCards').disabled=!session;
 }
@@ -50,7 +52,7 @@ async function loadCards(){
   grid.innerHTML='<div class="empty"><div><strong>Opening your binder…</strong></div></div>';
   const {data,error}=await supabase.from('posters').select('id,title,release_year,rarity,image_url,image_path,sort_order').order('sort_order');
   if(error){cards=[];render();alert(error.message);return;}
-  cards=await Promise.all(data.map(async row=>({id:row.id,title:row.title,year=row.release_year?String(row.release_year):'',rarity:row.rarity,imageUrl:row.image_url,imagePath:row.image_path,url:row.image_url||await signedUrl(row.image_path)})));
+  cards=await Promise.all(data.map(async row=>({id:row.id,title:row.title,year:row.release_year?String(row.release_year):'',rarity:row.rarity,imageUrl:row.image_url,imagePath:row.image_path,url:row.image_url||await signedUrl(row.image_path)})));
   if(!cards.length&&legacyCards.length){const migrated=[];for(const item of legacyCards.filter(item=>validSource(String(item?.url||''))&&typeof item.title==='string'))migrated.push(await sourceToCard(String(item.url).replace(/^http:/,'https:'),crypto.randomUUID(),{title:item.title.slice(0,60),year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));await persist(migrated);legacyCards=[];localStorage.removeItem('posterdex-v1');return;}
   if(legacyCards.length){legacyCards=[];localStorage.removeItem('posterdex-v1');}
   refreshYears();render();

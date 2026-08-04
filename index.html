@@ -11,9 +11,9 @@
 <body>
   <header>
     <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
-    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="add" id="openAdd">＋ Add a poster</button></div>
+    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
   </header>
-  <div class="toolbar">
+  <div class="toolbar" id="collectionToolbar" hidden>
     <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
     <select class="filter" id="yearFilter" aria-label="Filter by year"><option value="">All years</option></select>
     <select class="filter" id="rarityFilter" aria-label="Filter by rarity"><option value="">All rarities</option><option>Common</option><option>Rare</option><option>Legendary</option></select>
