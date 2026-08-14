@@ -1,7 +1,16 @@
+create table if not exists public.folders (
+  id uuid primary key,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  name text not null check (char_length(name) between 1 and 40),
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 create table if not exists public.posters (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
-  title text not null check (char_length(title) between 1 and 60),
+  folder_id uuid references public.folders(id) on delete set null,
+  title text not null,
   release_year smallint check (release_year between 1888 and 2200),
   rarity text not null default 'Common' check (rarity in ('Common', 'Rare', 'Legendary')),
   image_url text,
@@ -9,12 +18,38 @@ create table if not exists public.posters (
   sort_order integer not null default 0,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint poster_has_one_image check ((image_url is null) <> (image_path is null))
+  constraint poster_has_one_image check ((image_url is null) <> (image_path is null)),
+  constraint poster_title_valid check (char_length(title) <= 60)
 );
 
+alter table public.posters add column if not exists folder_id uuid references public.folders(id) on delete set null;
+alter table public.posters drop constraint if exists posters_title_check;
+alter table public.posters drop constraint if exists poster_title_valid;
+alter table public.posters add constraint poster_title_valid check (char_length(title) <= 60);
+
+create index if not exists folders_user_sort_idx on public.folders (user_id, sort_order);
 create index if not exists posters_user_sort_idx on public.posters (user_id, sort_order);
+create index if not exists posters_user_folder_sort_idx on public.posters (user_id, folder_id, sort_order);
+alter table public.folders enable row level security;
 alter table public.posters enable row level security;
+grant select, insert, update, delete on public.folders to authenticated;
 grant select, insert, update, delete on public.posters to authenticated;
+
+drop policy if exists "Users read their folders" on public.folders;
+create policy "Users read their folders" on public.folders for select to authenticated
+using ((select auth.uid()) = user_id);
+
+drop policy if exists "Users create their folders" on public.folders;
+create policy "Users create their folders" on public.folders for insert to authenticated
+with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users update their folders" on public.folders;
+create policy "Users update their folders" on public.folders for update to authenticated
+using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists "Users delete their folders" on public.folders;
+create policy "Users delete their folders" on public.folders for delete to authenticated
+using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users read their posters" on public.posters;
 create policy "Users read their posters" on public.posters for select to authenticated
@@ -22,11 +57,12 @@ using ((select auth.uid()) = user_id);
 
 drop policy if exists "Users create their posters" on public.posters;
 create policy "Users create their posters" on public.posters for insert to authenticated
-with check ((select auth.uid()) = user_id);
+with check ((select auth.uid()) = user_id and (folder_id is null or exists (select 1 from public.folders where id=folder_id and user_id=(select auth.uid()))));
 
 drop policy if exists "Users update their posters" on public.posters;
 create policy "Users update their posters" on public.posters for update to authenticated
-using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+using ((select auth.uid()) = user_id)
+with check ((select auth.uid()) = user_id and (folder_id is null or exists (select 1 from public.folders where id=folder_id and user_id=(select auth.uid()))));
 
 drop policy if exists "Users delete their posters" on public.posters;
 create policy "Users delete their posters" on public.posters for delete to authenticated

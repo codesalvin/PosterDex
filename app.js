@@ -1,14 +1,15 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.112.0/+esm';
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
+import { cardsInFolder, moveCard } from './folder-state.mjs';
 
-const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage');
+const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), folderSelect=$('#folder'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage'), folderDialog=$('#folderDialog'), folderForm=$('#folderForm');
 const configured=!SUPABASE_URL.includes('YOUR_PROJECT')&&!SUPABASE_PUBLISHABLE_KEY.includes('REPLACE_ME');
 const supabase=configured?createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
 const safe=s=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const urls=()=>urlInput.value.split(/\r?\n/).map(url=>url.trim()).filter(Boolean);
 const validUrl=url=>{try{return new URL(url).protocol==='https:';}catch{return false;}};
 const validSource=source=>validUrl(source)||/^data:image\/(?:jpeg|png|webp);base64,/i.test(source);
-let cards=[], session=null, editingId=null, draggedId=null, previewUrls=[], legacyCards=[];
+let cards=[], folders=[], session=null, editingId=null, draggedId=null, activeFolderId=null, previewUrls=[], legacyCards=[];
 
 try{const saved=JSON.parse(localStorage.getItem('posterdex-v1')||'[]');if(Array.isArray(saved))legacyCards=saved;}catch{}
 localStorage.removeItem('posterdex-tmdb-token');
@@ -28,10 +29,14 @@ function refreshYears(){
   if(years.includes(selected))yearFilter.value=selected;
 }
 function render(){
-  count.textContent=`${cards.length} CARD${cards.length===1?'':'S'}`;
-  if(!session){grid.innerHTML='<div class="empty"><div><strong>Sign in to start collecting.</strong><span>Your binder is stored securely with your account.</span></div></div>';return;}
-  const q=search.value.trim().toLowerCase(), shown=cards.filter(card=>(card.title+' '+card.year+' '+card.rarity).toLowerCase().includes(q)&&(!yearFilter.value||card.year===yearFilter.value)&&(!rarityFilter.value||card.rarity===rarityFilter.value));
-  grid.innerHTML=shown.length?shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}" draggable="true"><button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title)}">×</button><button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title)}">✎</button><div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title)} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.indexOf(card)+1).padStart(3,'0')}</span></div></div></article>`).join(''):`<div class="empty"><div><strong>${cards.length?'No matching cards.':'Your binder is empty.'}</strong><span>${cards.length?'Try another filter.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
+  count.textContent=`${cards.length} CARD${cards.length===1?'':'S'} · ${folders.length} FOLDER${folders.length===1?'':'S'}`;
+  if(!session){$('#folderNav').hidden=true;grid.innerHTML='<div class="empty"><div><strong>Sign in to start collecting.</strong><span>Your binder is stored securely with your account.</span></div></div>';return;}
+  const activeFolder=folders.find(folder=>folder.id===activeFolderId);if(activeFolderId&&!activeFolder)activeFolderId=null;
+  $('#folderNav').hidden=!activeFolderId;$('#folderName').textContent=activeFolder?.name||'';
+  const q=search.value.trim().toLowerCase(), folderCardsList=cardsInFolder(cards,activeFolderId), shown=folderCardsList.filter(card=>(card.title+' '+card.year+' '+card.rarity).toLowerCase().includes(q)&&(!yearFilter.value||card.year===yearFilter.value)&&(!rarityFilter.value||card.rarity===rarityFilter.value));
+  const folderCards=activeFolderId?'':folders.filter(folder=>folder.name.toLowerCase().includes(q)).map(folder=>`<article class="folder-card" data-folder="${folder.id}" tabindex="0"><button class="remove-folder" data-remove-folder="${folder.id}" aria-label="Delete ${safe(folder.name)}">×</button><div class="folder-icon" aria-hidden="true">▰</div><div><h2>${safe(folder.name)}</h2><p>${cardsInFolder(cards,folder.id).length} posters · drop cards here</p></div></article>`).join('');
+  const posterCards=shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}" draggable="true"><button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title||'poster')}">×</button><button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title||'poster')}">✎</button><div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title||'Movie')} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)||'Untitled poster'}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.indexOf(card)+1).padStart(3,'0')}</span></div></div></article>`).join('');
+  grid.innerHTML=folderCards+posterCards||`<div class="empty"><div><strong>${folderCardsList.length?'No matching cards.':activeFolderId?'This folder is empty.':'Your binder is empty.'}</strong><span>${folderCardsList.length?'Try another filter.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
 }
 function showSession(nextSession){
   session=nextSession;
@@ -39,6 +44,7 @@ function showSession(nextSession){
   $('#authButton').hidden=Boolean(session);
   $('#logoutButton').hidden=!session;
   $('#openAdd').hidden=!session;
+  $('#openFolder').hidden=!session;
   $('#collectionToolbar').hidden=!session;
   $('#importCards').disabled=!session;
   $('#exportCards').disabled=!session;
@@ -48,18 +54,18 @@ async function signedUrl(path){
   if(error)throw error;return data.signedUrl;
 }
 async function loadCards(){
-  if(!session){cards=[];refreshYears();render();return;}
+  if(!session){cards=[];folders=[];activeFolderId=null;refreshYears();render();return;}
   grid.innerHTML='<div class="empty"><div><strong>Opening your binder…</strong></div></div>';
-  const {data,error}=await supabase.from('posters').select('id,title,release_year,rarity,image_url,image_path,sort_order').order('sort_order');
-  if(error){cards=[];render();alert(error.message);return;}
-  cards=await Promise.all(data.map(async row=>({id:row.id,title:row.title,year:row.release_year?String(row.release_year):'',rarity:row.rarity,imageUrl:row.image_url,imagePath:row.image_path,url:row.image_url||await signedUrl(row.image_path)})));
-  if(!cards.length&&legacyCards.length){const migrated=[];for(const item of legacyCards.filter(item=>validSource(String(item?.url||''))&&typeof item.title==='string'))migrated.push(await sourceToCard(String(item.url).replace(/^http:/,'https:'),crypto.randomUUID(),{title:item.title.slice(0,60),year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));await persist(migrated);legacyCards=[];localStorage.removeItem('posterdex-v1');return;}
+  const [{data:folderRows,error:folderError},{data,error}]=await Promise.all([supabase.from('folders').select('id,name,sort_order').order('sort_order'),supabase.from('posters').select('id,folder_id,title,release_year,rarity,image_url,image_path,sort_order').order('sort_order')]);
+  if(error||folderError){cards=[];folders=[];render();alert((error||folderError).message);return;}
+  folders=folderRows;cards=await Promise.all(data.map(async row=>({id:row.id,folderId:row.folder_id,title:row.title,year:row.release_year?String(row.release_year):'',rarity:row.rarity,imageUrl:row.image_url,imagePath:row.image_path,url:row.image_url||await signedUrl(row.image_path)})));
+  if(!cards.length&&legacyCards.length){const migrated=[];for(const item of legacyCards.filter(item=>validSource(String(item?.url||''))&&typeof item.title==='string'))migrated.push(await sourceToCard(String(item.url).replace(/^http:/,'https:'),crypto.randomUUID(),{folderId:null,title:item.title.slice(0,60),year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));await persist(migrated);legacyCards=[];localStorage.removeItem('posterdex-v1');return;}
   if(legacyCards.length){legacyCards=[];localStorage.removeItem('posterdex-v1');}
   refreshYears();render();
 }
 async function persist(nextCards){
   if(!session)throw new Error('Log in before changing your collection.');
-  const rows=nextCards.map((card,index)=>({id:card.id,user_id:session.user.id,title:card.title,release_year:card.year?Number(card.year):null,rarity:card.rarity,image_url:card.imagePath?null:card.url,image_path:card.imagePath||null,sort_order:index,updated_at:new Date().toISOString()}));
+  const rows=nextCards.map((card,index)=>({id:card.id,user_id:session.user.id,folder_id:card.folderId||null,title:card.title,release_year:card.year?Number(card.year):null,rarity:card.rarity,image_url:card.imagePath?null:card.url,image_path:card.imagePath||null,sort_order:index,updated_at:new Date().toISOString()}));
   if(rows.length){const {error}=await supabase.from('posters').upsert(rows);if(error)throw error;}
   const removed=cards.filter(card=>!nextCards.some(next=>next.id===card.id));
   if(removed.length){const {error}=await supabase.from('posters').delete().in('id',removed.map(card=>card.id));if(error)throw error;}
@@ -84,8 +90,10 @@ async function initializeAuth(){
 }
 
 function showPreview(){clearPreviewUrls();previewUrls=[...gallery.files].map(URL.createObjectURL);preview.innerHTML=[...urls().filter(validUrl),...previewUrls].map(url=>`<img src="${safe(url)}" alt="Poster preview">`).join('');}
+function syncTitleRequirement(){const optional=Boolean(folderSelect.value);$('#title').required=!optional;$('#titleLabel').textContent=optional?'Movie title (optional)':'Movie title';$('#title').placeholder=optional?'Leave blank if you want':'Enter the title';}
 function openEditor(card){
   editingId=card?.id||null;form.reset();error.textContent='';clearPreviewUrls();preview.innerHTML='';
+  folderSelect.innerHTML='<option value="">No folder</option>'+folders.map(folder=>`<option value="${folder.id}">${safe(folder.name)}</option>`).join('');folderSelect.value=card?.folderId||activeFolderId||'';syncTitleRequirement();
   $('#dialogTitle').textContent=card?'Edit card':'New pull';$('#savePoster').textContent=card?'Save changes':'Add to collection';
   if(card){if(!card.imagePath)urlInput.value=card.url;else preview.innerHTML=`<img src="${safe(card.url)}" alt="Poster preview">`;$('#title').value=card.title;$('#year').value=card.year;$('#rarity').value=card.rarity;if(!card.imagePath)showPreview();}
   dialog.showModal();urlInput.focus();
@@ -93,39 +101,54 @@ function openEditor(card){
 function openAuth(){authForm.reset();authMessage.textContent=configured?'':'Add your Supabase project URL and publishable key in config.js first.';authDialog.showModal();}
 
 $('#openAdd').onclick=()=>session?openEditor():openAuth();
+$('#openFolder').onclick=()=>{folderForm.reset();$('#folderError').textContent='';folderDialog.showModal();$('#newFolderName').focus();};
 $('#authButton').onclick=openAuth;
 $('#closeAuth').onclick=()=>authDialog.close();
 authForm.onsubmit=async e=>{e.preventDefault();if(!supabase)return;authMessage.textContent='Logging in…';const {error}=await supabase.auth.signInWithPassword({email:$('#authEmail').value.trim(),password:$('#authPassword').value});if(error){authMessage.textContent=error.message;return;}authDialog.close();};
 $('#signupButton').onclick=async()=>{if(!authForm.reportValidity()||!supabase)return;authMessage.textContent='Creating account…';const {data,error}=await supabase.auth.signUp({email:$('#authEmail').value.trim(),password:$('#authPassword').value,options:{emailRedirectTo:`${location.origin}/`}});authMessage.textContent=error?error.message:data.session?'Account created.':'Check your email to confirm your account.';if(data.session)authDialog.close();};
 $('#logoutButton').onclick=async()=>{if(supabase)await supabase.auth.signOut();};
 $('#cancel').onclick=()=>dialog.close();
+$('#cancelFolder').onclick=()=>folderDialog.close();
+$('#folderBack').onclick=()=>{activeFolderId=null;search.value='';render();};
+folderSelect.onchange=syncTitleRequirement;
 urlInput.oninput=showPreview;gallery.onchange=showPreview;
+
+folderForm.onsubmit=async e=>{
+  e.preventDefault();const name=$('#newFolderName').value.trim();if(!name)return;
+  $('#folderError').textContent='Creating…';const folder={id:crypto.randomUUID(),user_id:session.user.id,name,sort_order:folders.length};const {error}=await supabase.from('folders').insert(folder);
+  if(error){$('#folderError').textContent=error.message;return;}folders.push({id:folder.id,name,sort_order:folder.sort_order});folderDialog.close();render();
+};
 
 form.onsubmit=async e=>{
   e.preventDefault();if(!session)return openAuth();
-  const data=new FormData(form),year=data.get('year').trim(),links=urls(),files=[...gallery.files];
+  const data=new FormData(form),folderId=data.get('folder')||null,title=data.get('title').trim(),year=data.get('year').trim(),links=urls(),files=[...gallery.files];
+  if(!folderId&&!title){error.textContent='Add a movie title or choose a folder.';return;}
   if(year&&!/^\d{4}$/.test(year)){error.textContent='Year must be four digits.';return;}
   if(links.some(url=>!validUrl(url))){error.textContent='Every pasted line must be a valid HTTPS image URL.';return;}
   if(files.length>10||files.some(file=>!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>15*1024*1024)){error.textContent='Choose up to 10 JPEG, PNG, or WebP files under 15 MB each.';return;}
   error.textContent='Saving…';
-  const details={title:data.get('title').trim(),year,rarity:data.get('rarity')},rawSources=[...links];
+  const details={folderId,title,year,rarity:data.get('rarity')},rawSources=[...links];
   try{rawSources.push(...await Promise.all(files.map(compressImage)));if(editingId&&!rawSources.length){const current=cards.find(card=>card.id===editingId);rawSources.push(current.imagePath?await supabase.storage.from('poster-images').download(current.imagePath).then(({data,error})=>{if(error)throw error;return data;}):current.url);}if(!rawSources.length)throw new Error('Paste a poster URL or choose an image from your gallery.');if(new Set(links).size!==links.length||links.some(url=>cards.some(card=>card.url===url&&card.id!==editingId)))throw new Error('One of those posters is already in your collection.');const created=[];for(let i=0;i<rawSources.length;i++)created.push(await sourceToCard(rawSources[i],i===0&&editingId?editingId:crypto.randomUUID(),details));let next;if(editingId){const index=cards.findIndex(card=>card.id===editingId);next=[...cards];next.splice(index,1,...created);}else next=[...created,...cards];await persist(next);clearPreviewUrls();dialog.close();}catch(err){error.textContent=err.message;}
 };
 
 grid.onclick=async e=>{
-  const removeId=e.target.dataset.remove,editId=e.target.dataset.edit;
+  const removeFolderId=e.target.dataset.removeFolder,folderId=e.target.closest('[data-folder]')?.dataset.folder,removeId=e.target.dataset.remove,editId=e.target.dataset.edit;
+  if(removeFolderId){if(!confirm('Delete this folder? Its posters will move back to All posters.'))return;try{await persist(cards.map(card=>card.folderId===removeFolderId?{...card,folderId:null,title:card.title||'Untitled poster'}:card));const {error}=await supabase.from('folders').delete().eq('id',removeFolderId);if(error)throw error;if(activeFolderId===removeFolderId)activeFolderId=null;await loadCards();}catch(err){alert(err.message);}return;}
+  if(folderId){activeFolderId=folderId;search.value='';render();return;}
   if(removeId){try{await persist(cards.filter(card=>card.id!==removeId));}catch(err){alert(err.message);}}
   if(editId)openEditor(cards.find(card=>card.id===editId));
 };
+grid.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-folder]')){e.preventDefault();activeFolderId=e.target.dataset.folder;search.value='';render();}};
 grid.addEventListener('error',e=>{if(e.target.matches('img'))e.target.parentElement.classList.add('broken');},true);
 grid.ondragstart=e=>{const card=e.target.closest('[data-card]');if(!card)return;draggedId=card.dataset.card;card.classList.add('dragging');};
-grid.ondragover=e=>e.preventDefault();
-grid.ondrop=async e=>{e.preventDefault();const target=e.target.closest('[data-card]');if(!target||target.dataset.card===draggedId)return;const next=[...cards],from=next.findIndex(card=>card.id===draggedId),to=next.findIndex(card=>card.id===target.dataset.card);next.splice(to,0,next.splice(from,1)[0]);try{await persist(next);}catch(err){alert(err.message);}};
+grid.ondragover=e=>{e.preventDefault();grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));e.target.closest('[data-folder]')?.classList.add('drop-target');};
+grid.ondragleave=e=>{if(!grid.contains(e.relatedTarget))grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));};
+grid.ondrop=async e=>{e.preventDefault();grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));const folder=e.target.closest('[data-folder]');if(folder&&draggedId){try{await persist(moveCard(cards,draggedId,folder.dataset.folder));}catch(err){alert(err.message);}return;}const target=e.target.closest('[data-card]');if(!target||target.dataset.card===draggedId)return;const next=[...cards],from=next.findIndex(card=>card.id===draggedId),to=next.findIndex(card=>card.id===target.dataset.card);next.splice(to,0,next.splice(from,1)[0]);try{await persist(next);}catch(err){alert(err.message);}};
 grid.ondragend=()=>{draggedId=null;render();};
 search.oninput=yearFilter.onchange=rarityFilter.onchange=render;
 
-$('#exportCards').onclick=async()=>{if(!session)return;const exported=[];for(const card of cards){let url=card.url;if(card.imagePath){const {data,error}=await supabase.storage.from('poster-images').download(card.imagePath);if(error)return alert(error.message);url=await blobToDataUrl(data);}exported.push({id:card.id,url,title:card.title,year:card.year,rarity:card.rarity});}const blob=new Blob([JSON.stringify({version:1,cards:exported},null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`posterdex-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);};
+$('#exportCards').onclick=async()=>{if(!session)return;const exported=[];for(const card of cards){let url=card.url;if(card.imagePath){const {data,error}=await supabase.storage.from('poster-images').download(card.imagePath);if(error)return alert(error.message);url=await blobToDataUrl(data);}exported.push({id:card.id,folderId:card.folderId||null,url,title:card.title,year:card.year,rarity:card.rarity});}const blob=new Blob([JSON.stringify({version:2,folders:folders.map(({id,name,sort_order})=>({id,name,sortOrder:sort_order})),cards:exported},null,2)],{type:'application/json'}),link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=`posterdex-${new Date().toISOString().slice(0,10)}.json`;link.click();URL.revokeObjectURL(link.href);};
 $('#importCards').onclick=()=>session&&$('#importFile').click();
-$('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards;if(!Array.isArray(incoming)||incoming.some(card=>!validSource(card.url)||typeof card.title!=='string'))throw new Error('That is not a valid PosterDex backup.');const known=new Set(cards.filter(card=>!card.imagePath).map(card=>card.url)),created=[];for(const item of incoming.filter(item=>!validUrl(item.url)||(!known.has(item.url)&&known.add(item.url))))created.push(await sourceToCard(item.url,crypto.randomUUID(),{title:item.title.slice(0,60),year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));await persist([...cards,...created]);}catch(err){alert(err.message);}e.target.value='';};
+$('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards,incomingFolders=Array.isArray(data.folders)?data.folders:[];if(!Array.isArray(incoming)||incoming.some(card=>!validSource(card.url)||typeof card.title!=='string')||incomingFolders.some(folder=>typeof folder.name!=='string'||!folder.name.trim()||folder.name.length>40))throw new Error('That is not a valid PosterDex backup.');const folderMap=new Map();if(!activeFolderId)for(const item of incomingFolders){let folder=folders.find(existing=>existing.name.toLowerCase()===item.name.trim().toLowerCase());if(!folder){folder={id:crypto.randomUUID(),user_id:session.user.id,name:item.name.trim(),sort_order:folders.length};const {error}=await supabase.from('folders').insert(folder);if(error)throw error;folders.push(folder);}folderMap.set(item.id,folder.id);}const known=new Set(cards.filter(card=>!card.imagePath).map(card=>card.url)),created=[];for(const item of incoming.filter(item=>!validUrl(item.url)||(!known.has(item.url)&&known.add(item.url)))){const folderId=activeFolderId||folderMap.get(item.folderId)||null,title=item.title.slice(0,60);if(!folderId&&!title)throw new Error('A poster outside a folder must have a title.');created.push(await sourceToCard(item.url,crypto.randomUUID(),{folderId,title,year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));}await persist([...cards,...created]);}catch(err){alert(err.message);}e.target.value='';};
 
 refreshYears();render();await initializeAuth();

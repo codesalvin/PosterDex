@@ -24,7 +24,7 @@ The publishable key is intended for browser use. Never commit a secret key, lega
 
 ## Database choice
 
-Use Supabase PostgreSQL. Supabase Auth owns user identities, the `posters` table stores collection metadata, and the private `poster-images` bucket stores gallery files. Row-level security limits every record and storage path to its owner.
+Use Supabase PostgreSQL. Supabase Auth owns user identities, the `folders` and `posters` tables store collection metadata, and the private `poster-images` bucket stores gallery files. Row-level security limits every record and storage path to its owner.
 
 Only authenticated users can retain a collection. Poster metadata is stored in `public.posters`; gallery images are stored in the private `poster-images` bucket. Anonymous visitors cannot read or write collection rows under RLS.
 
@@ -50,6 +50,7 @@ If an older browser-local collection exists and the signed-in account has no clo
 - `index.html` contains the page structure.
 - `styles.css` contains presentation and responsive styles.
 - `app.js` contains authentication, cloud collection behavior, and private image uploads.
+- `folder-state.mjs` contains the tested folder filtering and move helpers.
 - `config.js` contains the public Supabase project configuration.
 - `supabase/schema.sql` contains the database, storage, and RLS setup.
 - `vercel.json` contains deployment and security configuration.

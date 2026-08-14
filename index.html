@@ -11,7 +11,7 @@
 <body>
   <header>
     <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
-    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
+    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="auth-button" id="openFolder" hidden>＋ Folder</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
   </header>
   <div class="toolbar" id="collectionToolbar" hidden>
     <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
@@ -22,7 +22,7 @@
     <input id="importFile" type="file" accept="application/json" hidden>
     <div class="count" id="count">0 CARDS</div>
   </div>
-  <main><section class="grid" id="grid" aria-live="polite"></section></main>
+  <main><nav class="folder-nav" id="folderNav" hidden><button id="folderBack">← All posters</button><strong id="folderName"></strong></nav><section class="grid" id="grid" aria-live="polite"></section></main>
   <footer><span>YOUR COLLECTION · STORED WITH YOUR ACCOUNT</span><span>EST. 2026</span></footer>
 
   <dialog id="dialog">
@@ -35,7 +35,9 @@
       <input id="gallery" type="file" accept="image/jpeg,image/png,image/webp" multiple>
       <div class="hint">JPEG, PNG, or WebP. Up to 10 images at once; files are uploaded to your private account storage.</div>
       <div class="url-preview" id="urlPreview"></div>
-      <label for="title">Movie title</label>
+      <label for="folder">Folder</label>
+      <select id="folder" name="folder"><option value="">No folder</option></select>
+      <label for="title" id="titleLabel">Movie title</label>
       <input id="title" name="title" placeholder="Enter the title" maxlength="60" required>
       <div class="form-row">
         <div><label for="year">Year</label><input id="year" name="year" inputmode="numeric" placeholder="2026" maxlength="4"></div>
@@ -43,6 +45,16 @@
       </div>
       <div class="error" id="error"></div>
       <div class="actions"><button type="button" id="cancel">Cancel</button><button class="save" id="savePoster" type="submit">Add to collection</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="folderDialog">
+    <form id="folderForm">
+      <h2>New folder</h2>
+      <label for="newFolderName">Folder name</label>
+      <input id="newFolderName" maxlength="40" placeholder="Favorites" required>
+      <div class="error" id="folderError"></div>
+      <div class="actions"><button type="button" id="cancelFolder">Cancel</button><button class="save" type="submit">Create folder</button></div>
     </form>
   </dialog>
 

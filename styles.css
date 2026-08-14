@@ -23,7 +23,18 @@ header { padding:28px clamp(18px,4vw,64px) 22px; border-bottom:var(--line); disp
 .tool-button { cursor:pointer; }
 .count { background:var(--ink); color:var(--paper); padding:12px 14px; white-space:nowrap; font-size:.75rem; }
 main { padding:28px clamp(18px,4vw,64px) 70px; }
+.folder-nav { display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+.folder-nav button { border:var(--line); background:#fffaf0; padding:9px 12px; cursor:pointer; }
+.folder-nav strong { font:700 1rem "Unbounded",sans-serif; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(205px,235px)); gap:30px 22px; justify-content:start; }
+.folder-card { min-height:240px; border:var(--line); background:#ffdf55; padding:20px; box-shadow:7px 7px 0 var(--ink); display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:.15s; position:relative; }
+.folder-card:hover,.folder-card:focus-within { transform:translateY(-5px); box-shadow:9px 12px 0 var(--ink); }
+.folder-card.drop-target { background:var(--lime); transform:translateY(-7px) scale(1.02); }
+.folder-icon { font-size:4rem; line-height:1; }
+.folder-card h2 { margin:0; font:700 1.05rem "Unbounded",sans-serif; overflow-wrap:anywhere; }
+.folder-card p { margin:8px 0 0; font-size:.7rem; text-transform:uppercase; }
+.folder-card .remove-folder { position:absolute; right:10px; top:10px; border:var(--line); background:var(--orange); color:white; width:30px; height:30px; border-radius:50%; cursor:pointer; opacity:0; }
+.folder-card:hover .remove-folder,.remove-folder:focus { opacity:1; }
 .card { position:relative; border:var(--line); background:#fffaf0; padding:9px; box-shadow:7px 7px 0 var(--ink); transform:rotate(var(--tilt)); transition:.18s ease; cursor:grab; }
 .tilt-0 { --tilt:-.9deg; } .tilt-1 { --tilt:-.45deg; } .tilt-2 { --tilt:0deg; } .tilt-3 { --tilt:.45deg; } .tilt-4 { --tilt:.9deg; }
 .card:hover { transform:rotate(0) translateY(-7px); box-shadow:10px 14px 0 var(--ink); z-index:2; }
