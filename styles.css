@@ -15,7 +15,6 @@ header { padding:28px clamp(18px,4vw,64px) 22px; border-bottom:var(--line); disp
 .add:hover { transform:translate(2px,2px); box-shadow:3px 3px 0 var(--ink); }
 .header-actions { display:flex; align-items:center; justify-content:flex-end; gap:10px; flex-wrap:wrap; }
 .auth-button { border:var(--line); background:#fffaf0; padding:11px 13px; cursor:pointer; }
-.user-label { max-width:220px; overflow:hidden; text-overflow:ellipsis; font-size:.7rem; }
 .toolbar { padding:14px clamp(18px,4vw,64px); border-bottom:var(--line); display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
 .search { flex:1; min-width:0; border:var(--line); background:rgba(255,255,255,.45); padding:11px 13px; outline:none; }
 .search:focus { box-shadow:inset 0 -3px var(--orange); }
@@ -27,7 +26,8 @@ main { padding:28px clamp(18px,4vw,64px) 70px; }
 .folder-nav button { border:var(--line); background:#fffaf0; padding:9px 12px; cursor:pointer; }
 .folder-nav strong { font:700 1rem "Unbounded",sans-serif; }
 .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(205px,235px)); gap:30px 22px; justify-content:start; }
-.folder-card { min-height:240px; border:var(--line); background:#ffdf55; padding:20px; box-shadow:7px 7px 0 var(--ink); display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:.15s; position:relative; }
+.folder-card { min-height:240px; border:var(--line); background:var(--folder-color); padding:20px; box-shadow:7px 7px 0 var(--ink); display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:.15s; position:relative; }
+.folder-color-0 { --folder-color:#ffdf55; } .folder-color-1 { --folder-color:#caff4a; } .folder-color-2 { --folder-color:#ff8a6f; } .folder-color-3 { --folder-color:#8fa2ff; } .folder-color-4 { --folder-color:#ff9fd2; } .folder-color-5 { --folder-color:#c5a3ff; } .folder-color-6 { --folder-color:#72dfe8; }
 .folder-card:hover,.folder-card:focus-within { transform:translateY(-5px); box-shadow:9px 12px 0 var(--ink); }
 .folder-card.drop-target { background:var(--lime); transform:translateY(-7px) scale(1.02); }
 .folder-icon { font-size:4rem; line-height:1; }
@@ -68,6 +68,8 @@ label { display:block; margin:14px 0 6px; font-size:.72rem; text-transform:upper
 form input,form select,form textarea { width:100%; padding:12px; border:var(--line); background:white; outline:none; }
 form textarea { min-height:105px; resize:vertical; }
 form input[type="file"] { background:#fffaf0; cursor:pointer; }
+.check-row { display:flex; align-items:center; gap:9px; text-transform:none; cursor:pointer; }
+.check-row input { width:auto; margin:0; accent-color:var(--orange); }
 .hint { margin-top:6px; font-size:.65rem; line-height:1.45; opacity:.65; }
 .url-preview { display:grid; grid-template-columns:repeat(auto-fill,minmax(65px,1fr)); gap:8px; margin-top:10px; }
 .url-preview:empty { display:none; }

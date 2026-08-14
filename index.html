@@ -11,7 +11,7 @@
 <body>
   <header>
     <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
-    <div class="header-actions"><span class="user-label" id="userLabel"></span><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="auth-button" id="openFolder" hidden>＋ Folder</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
+    <div class="header-actions"><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="auth-button" id="openFolder" hidden>＋ Folder</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
   </header>
   <div class="toolbar" id="collectionToolbar" hidden>
     <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
@@ -53,6 +53,9 @@
       <h2>New folder</h2>
       <label for="newFolderName">Folder name</label>
       <input id="newFolderName" maxlength="40" placeholder="Favorites" required>
+      <label for="newFolderYear">Year (optional)</label>
+      <input id="newFolderYear" inputmode="numeric" maxlength="4" placeholder="2026">
+      <label class="check-row"><input id="autoNameFolder" type="checkbox"> Name untitled posters after this folder</label>
       <div class="error" id="folderError"></div>
       <div class="actions"><button type="button" id="cancelFolder">Cancel</button><button class="save" type="submit">Create folder</button></div>
     </form>

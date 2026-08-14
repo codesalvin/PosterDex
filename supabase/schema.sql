@@ -2,9 +2,14 @@ create table if not exists public.folders (
   id uuid primary key,
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
   name text not null check (char_length(name) between 1 and 40),
+  release_year smallint check (release_year between 1888 and 2200),
+  auto_name boolean not null default false,
   sort_order integer not null default 0,
   created_at timestamptz not null default now()
 );
+
+alter table public.folders add column if not exists release_year smallint check (release_year between 1888 and 2200);
+alter table public.folders add column if not exists auto_name boolean not null default false;
 
 create table if not exists public.posters (
   id uuid primary key,
