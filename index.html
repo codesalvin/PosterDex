@@ -11,7 +11,7 @@
 <body>
   <header>
     <div class="brand"><h1>Poster<span>Dex</span></h1><p>A personal vault for cinematic cardboard. Paste a poster link, build your set, flex the rare pulls.</p></div>
-    <div class="header-actions"><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="auth-button" id="openFolder" hidden>＋ Folder</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
+    <div class="header-actions"><button class="auth-button" id="authButton">Log in</button><button class="auth-button" id="logoutButton" hidden>Log out</button><button class="auth-button" id="shareCollection" hidden>Share</button><button class="auth-button" id="openFolder" hidden>＋ Folder</button><button class="add" id="openAdd" hidden>＋ Add a poster</button></div>
   </header>
   <div class="toolbar" id="collectionToolbar" hidden>
     <input class="search" id="search" type="search" placeholder="SEARCH YOUR COLLECTION…" aria-label="Search collection">
@@ -58,6 +58,18 @@
       <label class="check-row"><input id="autoNameFolder" type="checkbox"> Name untitled posters after this folder</label>
       <div class="error" id="folderError"></div>
       <div class="actions"><button type="button" id="cancelFolder">Cancel</button><button class="save" type="submit">Create folder</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="shareDialog">
+    <form id="shareForm">
+      <h2>Share collection</h2>
+      <div class="hint">Anyone with this link can view your posters and open folders. They cannot change anything.</div>
+      <label for="shareUrl">View-only link</label>
+      <input id="shareUrl" readonly>
+      <div class="hint">Disabling prevents new visits. Images already opened may remain visible for up to one hour.</div>
+      <div class="error" id="shareMessage" role="status"></div>
+      <div class="actions"><button type="button" id="disableShare">Disable link</button><button type="button" id="closeShare">Close</button><button class="save" type="button" id="copyShare">Copy link</button></div>
     </form>
   </dialog>
 

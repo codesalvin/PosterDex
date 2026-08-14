@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "2.112.0"
+  },
+  "scripts": {
+    "test": "node tests/folder-state.test.mjs && node api/shared-collection.test.mjs"
+  }
+}

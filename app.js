@@ -2,14 +2,15 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 import { cardsInFolder, folderColor, moveCard, posterTitle } from './folder-state.mjs';
 
-const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), folderSelect=$('#folder'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage'), folderDialog=$('#folderDialog'), folderForm=$('#folderForm');
+const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), folderSelect=$('#folder'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage'), folderDialog=$('#folderDialog'), folderForm=$('#folderForm'), shareDialog=$('#shareDialog'), shareMessage=$('#shareMessage');
 const configured=!SUPABASE_URL.includes('YOUR_PROJECT')&&!SUPABASE_PUBLISHABLE_KEY.includes('REPLACE_ME');
 const supabase=configured?createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
 const safe=s=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
 const urls=()=>urlInput.value.split(/\r?\n/).map(url=>url.trim()).filter(Boolean);
 const validUrl=url=>{try{return new URL(url).protocol==='https:';}catch{return false;}};
 const validSource=source=>validUrl(source)||/^data:image\/(?:jpeg|png|webp);base64,/i.test(source);
-let cards=[], folders=[], session=null, editingId=null, draggedId=null, activeFolderId=null, previewUrls=[], legacyCards=[];
+const publicShareToken=new URLSearchParams(location.search).get('share'), sharedView=Boolean(publicShareToken);
+let cards=[], folders=[], session=null, editingId=null, draggedId=null, activeFolderId=null, currentShareToken=null, previewUrls=[], legacyCards=[];
 
 try{const saved=JSON.parse(localStorage.getItem('posterdex-v1')||'[]');if(Array.isArray(saved))legacyCards=saved;}catch{}
 localStorage.removeItem('posterdex-tmdb-token');
@@ -30,18 +31,19 @@ function refreshYears(){
 }
 function render(){
   count.textContent=`${cards.length} CARD${cards.length===1?'':'S'} · ${folders.length} FOLDER${folders.length===1?'':'S'}`;
-  if(!session){$('#folderNav').hidden=true;grid.innerHTML='<div class="empty"><div><strong>Sign in to start collecting.</strong><span>Your binder is stored securely with your account.</span></div></div>';return;}
+  if(!session&&!sharedView){$('#folderNav').hidden=true;grid.innerHTML='<div class="empty"><div><strong>Sign in to start collecting.</strong><span>Your binder is stored securely with your account.</span></div></div>';return;}
   const activeFolder=folders.find(folder=>folder.id===activeFolderId);if(activeFolderId&&!activeFolder)activeFolderId=null;
   $('#folderNav').hidden=!activeFolderId;$('#folderName').textContent=activeFolder?.name||'';
   const q=search.value.trim().toLowerCase(), folderCardsList=cardsInFolder(cards,activeFolderId), shown=folderCardsList.filter(card=>(card.title+' '+card.year+' '+card.rarity).toLowerCase().includes(q)&&(!yearFilter.value||card.year===yearFilter.value)&&(!rarityFilter.value||card.rarity===rarityFilter.value));
-  const folderCards=activeFolderId?'':folders.filter(folder=>folder.name.toLowerCase().includes(q)).map(folder=>`<article class="folder-card folder-color-${folderColor(folders.indexOf(folder))}" data-folder="${folder.id}" tabindex="0"><button class="remove-folder" data-remove-folder="${folder.id}" aria-label="Delete ${safe(folder.name)}">×</button><div class="folder-icon" aria-hidden="true">▰</div><div><h2>${safe(folder.name)}</h2><p>${folder.year?`${safe(folder.year)} · `:''}${cardsInFolder(cards,folder.id).length} posters · drop cards here</p></div></article>`).join('');
-  const posterCards=shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}" draggable="true"><button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title||'poster')}">×</button><button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title||'poster')}">✎</button><div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title||'Movie')} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)||'Untitled poster'}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.indexOf(card)+1).padStart(3,'0')}</span></div></div></article>`).join('');
-  grid.innerHTML=folderCards+posterCards||`<div class="empty"><div><strong>${folderCardsList.length?'No matching cards.':activeFolderId?'This folder is empty.':'Your binder is empty.'}</strong><span>${folderCardsList.length?'Try another filter.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
+  const folderCards=activeFolderId?'':folders.filter(folder=>folder.name.toLowerCase().includes(q)).map(folder=>`<article class="folder-card folder-color-${folderColor(folders.indexOf(folder))}" data-folder="${folder.id}" tabindex="0">${sharedView?'':`<button class="remove-folder" data-remove-folder="${folder.id}" aria-label="Delete ${safe(folder.name)}">×</button>`}<div class="folder-icon" aria-hidden="true">▰</div><div><h2>${safe(folder.name)}</h2><p>${folder.year?`${safe(folder.year)} · `:''}${cardsInFolder(cards,folder.id).length} posters${sharedView?'':' · drop cards here'}</p></div></article>`).join('');
+  const posterCards=shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}"${sharedView?'':' draggable="true"'}>${sharedView?'':`<button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title||'poster')}">×</button><button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title||'poster')}">✎</button>`}<div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title||'Movie')} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)||'Untitled poster'}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.indexOf(card)+1).padStart(3,'0')}</span></div></div></article>`).join('');
+  grid.innerHTML=folderCards+posterCards||`<div class="empty"><div><strong>${folderCardsList.length?'No matching cards.':activeFolderId?'This folder is empty.':'Your binder is empty.'}</strong><span>${folderCardsList.length?'Try another filter.':sharedView?'There are no posters here yet.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
 }
 function showSession(nextSession){
   session=nextSession;
   $('#authButton').hidden=Boolean(session);
   $('#logoutButton').hidden=!session;
+  $('#shareCollection').hidden=!session;
   $('#openAdd').hidden=!session;
   $('#openFolder').hidden=!session;
   $('#collectionToolbar').hidden=!session;
@@ -61,6 +63,13 @@ async function loadCards(){
   if(!cards.length&&legacyCards.length){const migrated=[];for(const item of legacyCards.filter(item=>validSource(String(item?.url||''))&&typeof item.title==='string'))migrated.push(await sourceToCard(String(item.url).replace(/^http:/,'https:'),crypto.randomUUID(),{folderId:null,title:item.title.slice(0,60),year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));await persist(migrated);legacyCards=[];localStorage.removeItem('posterdex-v1');return;}
   if(legacyCards.length){legacyCards=[];localStorage.removeItem('posterdex-v1');}
   refreshYears();render();
+}
+async function loadShared(){
+  $('#authButton').hidden=$('#logoutButton').hidden=$('#shareCollection').hidden=$('#openFolder').hidden=$('#openAdd').hidden=true;
+  $('#collectionToolbar').hidden=false;$('#importCards').hidden=$('#exportCards').hidden=true;
+  document.title='Shared PosterDex Collection';$('.brand p').textContent='A view-only PosterDex collection. Open a folder and browse the pulls.';$('footer span').textContent='SHARED COLLECTION · VIEW ONLY';
+  grid.innerHTML='<div class="empty"><div><strong>Opening shared binder…</strong></div></div>';
+  try{const response=await fetch(`/api/shared-collection?token=${encodeURIComponent(publicShareToken)}`),data=await response.json();if(!response.ok)throw new Error(data.error||'Could not open this collection.');folders=data.folders;cards=data.cards;refreshYears();render();}catch(err){folders=[];cards=[];count.textContent='0 CARDS';grid.innerHTML=`<div class="empty"><div><strong>Share unavailable.</strong><span>${safe(err.message)}</span></div></div>`;}
 }
 async function persist(nextCards){
   if(!session)throw new Error('Log in before changing your collection.');
@@ -98,9 +107,16 @@ function openEditor(card){
   dialog.showModal();urlInput.focus();
 }
 function openAuth(){authForm.reset();authMessage.textContent=configured?'':'Add your Supabase project URL and publishable key in config.js first.';authDialog.showModal();}
+async function openShare(){
+  shareMessage.textContent='Preparing link…';$('#shareUrl').value='';shareDialog.showModal();
+  const {data,error}=await supabase.from('share_links').select('token').maybeSingle();if(error){shareMessage.textContent=error.message;return;}
+  let link=data;if(!link){const result=await supabase.from('share_links').insert({user_id:session.user.id}).select('token').single();if(result.error){shareMessage.textContent=result.error.message;return;}link=result.data;}
+  currentShareToken=link.token;$('#shareUrl').value=`${location.origin}${location.pathname}?share=${link.token}`;shareMessage.textContent='Anyone with this link can view your collection.';
+}
 
 $('#openAdd').onclick=()=>session?openEditor():openAuth();
 $('#openFolder').onclick=()=>{folderForm.reset();$('#folderError').textContent='';folderDialog.showModal();$('#newFolderName').focus();};
+$('#shareCollection').onclick=openShare;
 $('#authButton').onclick=openAuth;
 $('#closeAuth').onclick=()=>authDialog.close();
 authForm.onsubmit=async e=>{e.preventDefault();if(!supabase)return;authMessage.textContent='Logging in…';const {error}=await supabase.auth.signInWithPassword({email:$('#authEmail').value.trim(),password:$('#authPassword').value});if(error){authMessage.textContent=error.message;return;}authDialog.close();};
@@ -108,6 +124,10 @@ $('#signupButton').onclick=async()=>{if(!authForm.reportValidity()||!supabase)re
 $('#logoutButton').onclick=async()=>{if(supabase)await supabase.auth.signOut();};
 $('#cancel').onclick=()=>dialog.close();
 $('#cancelFolder').onclick=()=>folderDialog.close();
+$('#closeShare').onclick=()=>shareDialog.close();
+$('#copyShare').onclick=async()=>{const link=$('#shareUrl').value;if(!link)return;try{await navigator.clipboard.writeText(link);shareMessage.textContent='Link copied.';}catch{$('#shareUrl').select();shareMessage.textContent='Select the link and copy it.';}};
+$('#disableShare').onclick=async()=>{if(!currentShareToken||!confirm('Disable this public link?'))return;const {error}=await supabase.from('share_links').delete().eq('token',currentShareToken);if(error){shareMessage.textContent=error.message;return;}currentShareToken=null;$('#shareUrl').value='';shareMessage.textContent='Sharing disabled.';};
+$('#shareForm').onsubmit=e=>e.preventDefault();
 $('#folderBack').onclick=()=>{activeFolderId=null;search.value='';render();};
 folderSelect.onchange=syncTitleRequirement;
 urlInput.oninput=showPreview;gallery.onchange=showPreview;
@@ -139,7 +159,7 @@ grid.onclick=async e=>{
 };
 grid.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-folder]')){e.preventDefault();activeFolderId=e.target.dataset.folder;search.value='';render();}};
 grid.addEventListener('error',e=>{if(e.target.matches('img'))e.target.parentElement.classList.add('broken');},true);
-grid.ondragstart=e=>{const card=e.target.closest('[data-card]');if(!card)return;draggedId=card.dataset.card;card.classList.add('dragging');};
+grid.ondragstart=e=>{if(sharedView)return e.preventDefault();const card=e.target.closest('[data-card]');if(!card)return;draggedId=card.dataset.card;card.classList.add('dragging');};
 grid.ondragover=e=>{e.preventDefault();grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));e.target.closest('[data-folder]')?.classList.add('drop-target');};
 grid.ondragleave=e=>{if(!grid.contains(e.relatedTarget))grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));};
 grid.ondrop=async e=>{e.preventDefault();grid.querySelectorAll('.drop-target').forEach(item=>item.classList.remove('drop-target'));const folder=e.target.closest('[data-folder]');if(folder&&draggedId){try{await persist(moveCard(cards,draggedId,folders.find(item=>item.id===folder.dataset.folder)));}catch(err){alert(err.message);}return;}const target=e.target.closest('[data-card]');if(!target||target.dataset.card===draggedId)return;const next=[...cards],from=next.findIndex(card=>card.id===draggedId),to=next.findIndex(card=>card.id===target.dataset.card);next.splice(to,0,next.splice(from,1)[0]);try{await persist(next);}catch(err){alert(err.message);}};
@@ -150,4 +170,4 @@ $('#exportCards').onclick=async()=>{if(!session)return;const exported=[];for(con
 $('#importCards').onclick=()=>session&&$('#importFile').click();
 $('#importFile').onchange=async e=>{try{const data=JSON.parse(await e.target.files[0].text()),incoming=Array.isArray(data)?data:data.cards,incomingFolders=Array.isArray(data.folders)?data.folders:[];if(!Array.isArray(incoming)||incoming.some(card=>!validSource(card.url)||typeof card.title!=='string')||incomingFolders.some(folder=>typeof folder.name!=='string'||!folder.name.trim()||folder.name.length>40||(folder.year&&(!/^\d{4}$/.test(String(folder.year))||Number(folder.year)<1888||Number(folder.year)>2200))))throw new Error('That is not a valid PosterDex backup.');const folderMap=new Map();if(!activeFolderId)for(const item of incomingFolders){let folder=folders.find(existing=>existing.name.toLowerCase()===item.name.trim().toLowerCase());if(!folder){const year=item.year?String(item.year):'';folder={id:crypto.randomUUID(),user_id:session.user.id,name:item.name.trim(),release_year:year?Number(year):null,auto_name:Boolean(item.autoName),sort_order:folders.length,year,autoName:Boolean(item.autoName)};const {error}=await supabase.from('folders').insert({id:folder.id,user_id:folder.user_id,name:folder.name,release_year:folder.release_year,auto_name:folder.auto_name,sort_order:folder.sort_order});if(error)throw error;folders.push(folder);}folderMap.set(item.id,folder.id);}const known=new Set(cards.filter(card=>!card.imagePath).map(card=>card.url)),created=[];for(const item of incoming.filter(item=>!validUrl(item.url)||(!known.has(item.url)&&known.add(item.url)))){const folderId=activeFolderId||folderMap.get(item.folderId)||null,folder=folders.find(candidate=>candidate.id===folderId),title=posterTitle(item.title.slice(0,60),folder);if(!folderId&&!title)throw new Error('A poster outside a folder must have a title.');created.push(await sourceToCard(item.url,crypto.randomUUID(),{folderId,title,year:/^\d{4}$/.test(String(item.year||''))?String(item.year):'',rarity:['Common','Rare','Legendary'].includes(item.rarity)?item.rarity:'Common'}));}await persist([...cards,...created]);}catch(err){alert(err.message);}e.target.value='';};
 
-refreshYears();render();await initializeAuth();
+refreshYears();if(sharedView)await loadShared();else{render();await initializeAuth();}

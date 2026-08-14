@@ -10,7 +10,9 @@ Either import this folder's Git repository in the Vercel dashboard, or run:
 npx vercel --prod
 ```
 
-There is no build command, output directory, or server function. `vercel.json` supplies clean URLs and production security headers.
+There is no build command or output directory. `vercel.json` supplies clean URLs and production security headers.
+
+For view-only collection links, add `SUPABASE_SECRET_KEY` in Vercel → Project Settings → Environment Variables. Use the server-only secret key from Supabase Settings → API Keys; the legacy `SUPABASE_SERVICE_ROLE_KEY` name is also supported. Never put either secret in `config.js`.
 
 ## Configure Supabase
 
@@ -24,7 +26,7 @@ The publishable key is intended for browser use. Never commit a secret key, lega
 
 ## Database choice
 
-Use Supabase PostgreSQL. Supabase Auth owns user identities, the `folders` and `posters` tables store collection metadata, and the private `poster-images` bucket stores gallery files. Row-level security limits every record and storage path to its owner.
+Use Supabase PostgreSQL. Supabase Auth owns user identities, the `folders`, `posters`, and `share_links` tables store collection metadata, and the private `poster-images` bucket stores gallery files. Row-level security limits every record and storage path to its owner.
 
 Only authenticated users can retain a collection. Poster metadata is stored in `public.posters`; gallery images are stored in the private `poster-images` bucket. Anonymous visitors cannot read or write collection rows under RLS.
 
