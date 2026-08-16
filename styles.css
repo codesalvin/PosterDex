@@ -52,6 +52,7 @@ main { padding:28px clamp(18px,4vw,64px) 70px; }
 .meta h2 { margin:0 0 8px; min-height:2.35em; font:700 1rem/1.15 "Unbounded",sans-serif; letter-spacing:-.035em; }
 .row { display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:.7rem; text-transform:uppercase; }
 .number { opacity:.55; }
+.quantity { background:var(--orange); color:white; padding:3px 6px; font-weight:500; }
 .rarity { border:1px solid currentColor; padding:3px 6px; }
 .common { color:#555; } .rare { color:#3157e7; } .legendary { color:#d43c20; background:#ffdf55; }
 .remove,.edit { position:absolute; top:-12px; width:30px; height:30px; border:var(--line); border-radius:50%; cursor:pointer; opacity:0; transform:scale(.7); transition:.15s; z-index:3; }

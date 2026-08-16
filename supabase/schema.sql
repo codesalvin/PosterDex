@@ -24,6 +24,7 @@ create table if not exists public.posters (
   title text not null,
   release_year smallint check (release_year between 1888 and 2200),
   rarity text not null default 'Common' check (rarity in ('Common', 'Rare', 'Legendary')),
+  quantity smallint not null default 1 check (quantity between 1 and 999),
   image_url text,
   image_path text,
   sort_order integer not null default 0,
@@ -34,6 +35,7 @@ create table if not exists public.posters (
 );
 
 alter table public.posters add column if not exists folder_id uuid references public.folders(id) on delete set null;
+alter table public.posters add column if not exists quantity smallint not null default 1 check (quantity between 1 and 999);
 alter table public.posters drop constraint if exists posters_title_check;
 alter table public.posters drop constraint if exists poster_title_valid;
 alter table public.posters add constraint poster_title_valid check (char_length(title) <= 60);

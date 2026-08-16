@@ -14,13 +14,13 @@ export default async function handler(req,res){
   if(!share)return res.status(404).json({error:'This shared collection is unavailable.'});
   const [{data:folders,error:folderError},{data:posters,error:posterError}]=await Promise.all([
     admin.from('folders').select('id,name,release_year,sort_order').eq('user_id',share.user_id).order('sort_order'),
-    admin.from('posters').select('id,folder_id,title,release_year,rarity,image_url,image_path,sort_order').eq('user_id',share.user_id).order('sort_order')
+    admin.from('posters').select('id,folder_id,title,release_year,rarity,quantity,image_url,image_path,sort_order').eq('user_id',share.user_id).order('sort_order')
   ]);
   if(folderError||posterError)return res.status(500).json({error:'Could not open this collection.'});
   const cards=await Promise.all(posters.map(async poster=>{
     let url=poster.image_url;
     if(poster.image_path){const {data,error}=await admin.storage.from('poster-images').createSignedUrl(poster.image_path,3600);if(error)throw error;url=data.signedUrl;}
-    return {id:poster.id,folderId:poster.folder_id,title:poster.title,year:poster.release_year?String(poster.release_year):'',rarity:poster.rarity,url};
+    return {id:poster.id,folderId:poster.folder_id,title:poster.title,year:poster.release_year?String(poster.release_year):'',rarity:poster.rarity,quantity:poster.quantity,url};
   })).catch(()=>null);
   if(!cards)return res.status(500).json({error:'Could not load shared poster images.'});
   return res.status(200).json({folders:folders.map(folder=>({id:folder.id,name:folder.name,year:folder.release_year?String(folder.release_year):'',sort_order:folder.sort_order})),cards});

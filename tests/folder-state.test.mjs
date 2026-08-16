@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cardsInFolder, folderColor, moveCard, posterTitle } from '../folder-state.mjs';
+import { cardQuantity, cardsInFolder, extraFolder, folderColor, moveCard, posterCount, posterTitle } from '../folder-state.mjs';
 
 const cards=[{id:'a',folderId:null},{id:'b',folderId:'favorites'}];
 assert.deepEqual(cardsInFolder(cards,null).map(card=>card.id),['a']);
@@ -10,4 +10,10 @@ assert.deepEqual(moveCard([{id:'c',title:'',folderId:null}],'c',{id:'favorites',
 assert.deepEqual(Array.from({length:8},(_,index)=>folderColor(index)),[0,1,2,3,4,5,6,0]);
 assert.equal(posterTitle('',{name:'Favorites',autoName:true}),'Favorites');
 assert.equal(posterTitle('',{name:'Favorites',autoName:false}),'');
+assert.equal(cardQuantity(3),3);
+assert.equal(cardQuantity(0),1);
+assert.equal(cardQuantity('lots'),1);
+assert.equal(cardQuantity(1000),999);
+assert.equal(posterCount([{quantity:2},{quantity:3},{}]),6);
+assert.equal(extraFolder([{name:'Favorites'},{id:'extra',name:' EXTRA '}]).id,'extra');
 console.log('folder-state checks passed');
