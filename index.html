@@ -45,7 +45,7 @@
       </div>
       <label for="quantity">Quantity</label>
       <input id="quantity" name="quantity" type="number" min="1" max="999" value="1" required>
-      <div class="hint">Quantities above 1 are moved to your “Extra” folder.</div>
+      <div class="hint">The original stays in its folder; surplus copies appear in your “Extra” folder.</div>
       <div class="error" id="error"></div>
       <div class="actions"><button type="button" id="cancel">Cancel</button><button class="save" id="savePoster" type="submit">Add to collection</button></div>
     </form>
@@ -85,7 +85,29 @@
       <label for="authPassword">Password</label>
       <input id="authPassword" type="password" autocomplete="current-password" minlength="8" required>
       <div class="error" id="authMessage" role="status"></div>
-      <div class="actions"><button type="button" id="closeAuth">Cancel</button><button type="button" id="signupButton">Sign up</button><button class="save" type="submit">Log in</button></div>
+      <div class="actions"><button type="button" id="forgotPassword">Forgot password</button><button type="button" id="closeAuth">Cancel</button><button type="button" id="signupButton">Sign up</button><button class="save" type="submit">Log in</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="resetDialog">
+    <form id="resetForm">
+      <h2>Choose a new password</h2>
+      <label for="newPassword">New password</label>
+      <input id="newPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <label for="confirmPassword">Confirm new password</label>
+      <input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" required>
+      <div class="error" id="resetMessage" role="status"></div>
+      <div class="actions"><button type="button" id="cancelReset">Cancel</button><button class="save" type="submit">Update password</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="moveDialog">
+    <form id="moveForm">
+      <h2>Move poster</h2>
+      <label for="moveFolder">Destination</label>
+      <select id="moveFolder"><option value="">No folder</option></select>
+      <div class="error" id="moveMessage" role="status"></div>
+      <div class="actions"><button type="button" id="cancelMove">Cancel</button><button class="save" type="submit">Move</button></div>
     </form>
   </dialog>
 

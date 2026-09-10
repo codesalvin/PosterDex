@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 import { SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from './config.js';
 import { cardQuantity, cardsInFolder, extraCards, extraFolder, folderColor, moveCard, posterCount, posterTitle } from './folder-state.mjs';
 
-const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), folderSelect=$('#folder'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage'), folderDialog=$('#folderDialog'), folderForm=$('#folderForm'), shareDialog=$('#shareDialog'), shareMessage=$('#shareMessage');
+const $=selector=>document.querySelector(selector), grid=$('#grid'), count=$('#count'), dialog=$('#dialog'), form=$('#form'), search=$('#search'), error=$('#error'), urlInput=$('#url'), gallery=$('#gallery'), preview=$('#urlPreview'), folderSelect=$('#folder'), yearFilter=$('#yearFilter'), rarityFilter=$('#rarityFilter'), authDialog=$('#authDialog'), authForm=$('#authForm'), authMessage=$('#authMessage'), resetDialog=$('#resetDialog'), resetForm=$('#resetForm'), resetMessage=$('#resetMessage'), moveDialog=$('#moveDialog'), moveForm=$('#moveForm'), moveFolder=$('#moveFolder'), folderDialog=$('#folderDialog'), folderForm=$('#folderForm'), shareDialog=$('#shareDialog'), shareMessage=$('#shareMessage');
 const configured=!SUPABASE_URL.includes('YOUR_PROJECT')&&!SUPABASE_PUBLISHABLE_KEY.includes('REPLACE_ME');
 const supabase=configured?createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY):null;
 const safe=s=>String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -10,7 +10,7 @@ const urls=()=>urlInput.value.split(/\r?\n/).map(url=>url.trim()).filter(Boolean
 const validUrl=url=>{try{return new URL(url).protocol==='https:';}catch{return false;}};
 const validSource=source=>validUrl(source)||/^data:image\/(?:jpeg|png|webp);base64,/i.test(source);
 const publicShareToken=new URLSearchParams(location.search).get('share'), sharedView=Boolean(publicShareToken);
-let cards=[], folders=[], session=null, editingId=null, draggedId=null, activeFolderId=null, currentShareToken=null, previewUrls=[], legacyCards=[];
+let cards=[], folders=[], session=null, editingId=null, movingId=null, draggedId=null, activeFolderId=null, currentShareToken=null, previewUrls=[], legacyCards=[];
 
 try{const saved=JSON.parse(localStorage.getItem('posterdex-v1')||'[]');if(Array.isArray(saved))legacyCards=saved;}catch{}
 localStorage.removeItem('posterdex-tmdb-token');
@@ -37,7 +37,7 @@ function render(){
   $('#folderNav').hidden=!activeFolderId;$('#folderName').textContent=activeFolder?.name||'';
   const q=search.value.trim().toLowerCase(), folderCardsList=displayedCardsInFolder(activeFolderId), shown=folderCardsList.filter(card=>(card.title+' '+card.year+' '+card.rarity).toLowerCase().includes(q)&&(!yearFilter.value||card.year===yearFilter.value)&&(!rarityFilter.value||card.rarity===rarityFilter.value));
   const extras=extraFolder(folders),folderCards=activeFolderId?'':folders.filter(folder=>folder.name.toLowerCase().includes(q)).map(folder=>`<article class="folder-card folder-color-${folderColor(folders.indexOf(folder))}" data-folder="${folder.id}" tabindex="0">${sharedView?'':`<button class="remove-folder" data-remove-folder="${folder.id}" aria-label="Delete ${safe(folder.name)}">×</button>`}<div class="folder-icon" aria-hidden="true">▰</div><div><h2>${safe(folder.name)}</h2><p>${folder.year?`${safe(folder.year)} · `:''}${folder.id===extras?.id?posterCount(displayedCardsInFolder(folder.id)):cardsInFolder(cards,folder.id).length} posters${sharedView?'':' · drop cards here'}</p></div></article>`).join('');
-  const posterCards=shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}"${!sharedView&&!card.extraCopy?' draggable="true"':''}>${sharedView?'':`${card.extraCopy?'':`<button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title||'poster')}">×</button>`}<button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title||'poster')}">✎</button>`}<div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title||'Movie')} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)||'Untitled poster'}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.findIndex(item=>item.id===card.id)+1).padStart(3,'0')}</span>${cardQuantity(card.quantity)>1?`<span class="quantity">×${cardQuantity(card.quantity)}</span>`:''}</div></div></article>`).join('');
+  const posterCards=shown.map((card,i)=>`<article class="card tilt-${i%5}" data-card="${card.id}"${!sharedView&&!card.extraCopy?' draggable="true"':''}>${sharedView?'':`${card.extraCopy?'':`<button class="remove" data-remove="${card.id}" aria-label="Remove ${safe(card.title||'poster')}">×</button><button class="move" data-move="${card.id}" aria-label="Move ${safe(card.title||'poster')} to another folder">↗</button>`}<button class="edit" data-edit="${card.id}" aria-label="Edit ${safe(card.title||'poster')}">✎</button>`}<div class="poster glare-hover"><img src="${safe(card.url)}" alt="${safe(card.title||'Movie')} poster" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></div><div class="meta"><h2>${safe(card.title)||'Untitled poster'}</h2><div class="row"><span>${safe(card.year)||'Year unknown'}</span><span class="rarity ${card.rarity.toLowerCase()}">${safe(card.rarity)}</span></div><div class="row"><span class="number">#${String(cards.findIndex(item=>item.id===card.id)+1).padStart(3,'0')}</span>${cardQuantity(card.quantity)>1?`<span class="quantity">×${cardQuantity(card.quantity)}</span>`:''}</div></div></article>`).join('');
   grid.innerHTML=folderCards+posterCards||`<div class="empty"><div><strong>${folderCardsList.length?'No matching cards.':activeFolderId?'This folder is empty.':'Your binder is empty.'}</strong><span>${folderCardsList.length?'Try another filter.':sharedView?'There are no posters here yet.':'Hit “Add a poster” to make your first pull.'}</span></div></div>`;
 }
 function showSession(nextSession){
@@ -94,8 +94,8 @@ async function sourceToCard(source,id,details){
 }
 async function initializeAuth(){
   if(!supabase){showSession(null);render();return;}
+  supabase.auth.onAuthStateChange((event,nextSession)=>setTimeout(async()=>{showSession(nextSession);if(event==='PASSWORD_RECOVERY'){if(authDialog.open)authDialog.close();resetForm.reset();resetMessage.textContent='';resetDialog.showModal();$('#newPassword').focus();}await loadCards();},0));
   const {data}=await supabase.auth.getSession();showSession(data.session);await loadCards();
-  supabase.auth.onAuthStateChange((_event,nextSession)=>setTimeout(async()=>{showSession(nextSession);await loadCards();},0));
 }
 
 function showPreview(){clearPreviewUrls();previewUrls=[...gallery.files].map(URL.createObjectURL);preview.innerHTML=[...urls().filter(validUrl),...previewUrls].map(url=>`<img src="${safe(url)}" alt="Poster preview">`).join('');}
@@ -108,6 +108,7 @@ function openEditor(card){
   dialog.showModal();urlInput.focus();
 }
 function openAuth(){authForm.reset();authMessage.textContent=configured?'':'Add your Supabase project URL and publishable key in config.js first.';authDialog.showModal();}
+function openMover(card){movingId=card.id;moveForm.reset();$('#moveMessage').textContent='';moveFolder.innerHTML='<option value="">No folder</option>'+folders.map(folder=>`<option value="${folder.id}">${safe(folder.name)}</option>`).join('');moveFolder.value=card.folderId||'';moveDialog.showModal();moveFolder.focus();}
 async function createFolder(name,year='',autoName=false){
   const folder={id:crypto.randomUUID(),user_id:session.user.id,name,release_year:year?Number(year):null,auto_name:autoName,sort_order:folders.length};const {error}=await supabase.from('folders').insert(folder);if(error)throw error;
   const created={id:folder.id,name,year,autoName,sort_order:folder.sort_order};folders.push(created);return created;
@@ -126,10 +127,15 @@ $('#authButton').onclick=openAuth;
 $('#closeAuth').onclick=()=>authDialog.close();
 authForm.onsubmit=async e=>{e.preventDefault();if(!supabase)return;authMessage.textContent='Logging in…';const {error}=await supabase.auth.signInWithPassword({email:$('#authEmail').value.trim(),password:$('#authPassword').value});if(error){authMessage.textContent=error.message;return;}authDialog.close();};
 $('#signupButton').onclick=async()=>{if(!authForm.reportValidity()||!supabase)return;authMessage.textContent='Creating account…';const {data,error}=await supabase.auth.signUp({email:$('#authEmail').value.trim(),password:$('#authPassword').value,options:{emailRedirectTo:`${location.origin}/`}});authMessage.textContent=error?error.message:data.session?'Account created.':'Check your email to confirm your account.';if(data.session)authDialog.close();};
+$('#forgotPassword').onclick=async()=>{if(!$('#authEmail').reportValidity()||!supabase)return;authMessage.textContent='Sending reset link…';const {error}=await supabase.auth.resetPasswordForEmail($('#authEmail').value.trim(),{redirectTo:`${location.origin}/`});authMessage.textContent=error?error.message:'Check your email for a password reset link.';};
+$('#cancelReset').onclick=async()=>{await supabase.auth.signOut();resetDialog.close();};
+resetForm.onsubmit=async e=>{e.preventDefault();const password=$('#newPassword').value;if(password!==$('#confirmPassword').value){resetMessage.textContent='Passwords do not match.';return;}resetMessage.textContent='Updating…';const {error}=await supabase.auth.updateUser({password});resetMessage.textContent=error?error.message:'Password updated. You can close this window.';};
 $('#logoutButton').onclick=async()=>{if(supabase)await supabase.auth.signOut();};
 $('#cancel').onclick=()=>dialog.close();
 $('#cancelFolder').onclick=()=>folderDialog.close();
 $('#closeShare').onclick=()=>shareDialog.close();
+$('#cancelMove').onclick=()=>moveDialog.close();
+moveForm.onsubmit=async e=>{e.preventDefault();const target=folders.find(folder=>folder.id===moveFolder.value)||'';$('#moveMessage').textContent='Moving…';try{await persist(moveCard(cards,movingId,target));moveDialog.close();}catch(err){$('#moveMessage').textContent=err.message;}};
 $('#copyShare').onclick=async()=>{const link=$('#shareUrl').value;if(!link)return;try{await navigator.clipboard.writeText(link);shareMessage.textContent='Link copied.';}catch{$('#shareUrl').select();shareMessage.textContent='Select the link and copy it.';}};
 $('#disableShare').onclick=async()=>{if(!currentShareToken||!confirm('Disable this public link?'))return;const {error}=await supabase.from('share_links').delete().eq('token',currentShareToken);if(error){shareMessage.textContent=error.message;return;}currentShareToken=null;$('#shareUrl').value='';shareMessage.textContent='Sharing disabled.';};
 $('#shareForm').onsubmit=e=>e.preventDefault();
@@ -155,11 +161,12 @@ form.onsubmit=async e=>{
 };
 
 grid.onclick=async e=>{
-  const removeFolderId=e.target.dataset.removeFolder,folderId=e.target.closest('[data-folder]')?.dataset.folder,removeId=e.target.dataset.remove,editId=e.target.dataset.edit;
+  const removeFolderId=e.target.dataset.removeFolder,folderId=e.target.closest('[data-folder]')?.dataset.folder,removeId=e.target.dataset.remove,editId=e.target.dataset.edit,moveId=e.target.dataset.move;
   if(removeFolderId){if(!confirm('Delete this folder? Its posters will move back to All posters.'))return;try{await persist(cards.map(card=>card.folderId===removeFolderId?{...card,folderId:null,title:card.title||'Untitled poster'}:card));const {error}=await supabase.from('folders').delete().eq('id',removeFolderId);if(error)throw error;if(activeFolderId===removeFolderId)activeFolderId=null;await loadCards();}catch(err){alert(err.message);}return;}
   if(folderId){activeFolderId=folderId;search.value='';render();return;}
   if(removeId){try{await persist(cards.filter(card=>card.id!==removeId));}catch(err){alert(err.message);}}
   if(editId)openEditor(cards.find(card=>card.id===editId));
+  if(moveId)openMover(cards.find(card=>card.id===moveId));
 };
 grid.onkeydown=e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-folder]')){e.preventDefault();activeFolderId=e.target.dataset.folder;search.value='';render();}};
 grid.addEventListener('error',e=>{if(e.target.matches('img'))e.target.parentElement.classList.add('broken');},true);
