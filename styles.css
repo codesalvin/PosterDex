@@ -13,7 +13,9 @@
 * { box-sizing:border-box; }
 html { background:var(--ink); }
 [hidden] { display:none!important; }
-body { min-height:100vh; margin:0; color:var(--ink); background:var(--paper); font-family:"DM Mono",monospace; overflow-x:hidden; }
+body { min-height:100vh; min-height:100svh; display:flex; flex-direction:column; margin:0; color:var(--ink); background:var(--paper); font-family:"DM Mono",monospace; overflow-x:hidden; }
+body > main { flex:1; }
+body > .hero,body > .toolbar,body > footer { flex-shrink:0; }
 body::before { content:""; position:fixed; inset:0; z-index:20; pointer-events:none; opacity:.32; background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 140 140' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.12'/%3E%3C/svg%3E"); mix-blend-mode:multiply; }
 button,input,select,textarea { font:inherit; }
 button { color:inherit; }
